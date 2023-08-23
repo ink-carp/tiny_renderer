@@ -4,4 +4,7 @@ This repo is a rust implement for [tinyrenderer](https://github.com/ssloy/tinyre
 
 ## Dependencies
 This implementation requires no dependencies and only requires the standard library
-
+## Enviroment
+ubuntu 20.04
+rustc  1.69.0
+Edition-Version 2021
