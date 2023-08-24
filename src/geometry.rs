@@ -147,22 +147,6 @@ impl Matrix {
     pub fn set(&mut self,y:usize,x:usize,num:f64){
         self.rows[y].set(x, num);
     }
-    /// Removes the specified row and column
-    fn get_minor(&self,row:usize,col:usize)->Self{
-        let mut ret = Self::new(self.rows.len()-1, self.cols);
-        for y in 0..self.rows.len()-1{
-            for x in 0..self.cols-1{
-                let real_y = if y==row {y+1}else{y};
-                let real_x = if x==col {x+1}else{x};
-                ret.rows[y].set(x,self.get(real_y, real_x));
-            }
-        }
-        ret
-    }
-    fn cofactor(&self,row:usize,col:usize)->f64{
-        todo!()
-    }
-
 }
 
 #[cfg(test)]

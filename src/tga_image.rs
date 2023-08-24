@@ -1,5 +1,7 @@
+#![allow(non_camel_case_types)]
 type uint8_t = u8;
 type uint16_t = u16;
+/// Synchronization with C's memory alignment
 #[derive(Default)]
 #[repr(C,packed)]
 struct TGAHeader {
@@ -25,6 +27,7 @@ impl TgaColor {
     pub fn new(red:u8,green:u8,blue:u8,alpha:u8)->Self{
         Self{rgba:[blue,green,red,alpha],size:4}
     }
+    /// index should less than 4
     pub fn get(&self,index:usize)->u8{
         self.rgba[index]
     }
@@ -47,7 +50,7 @@ impl TgaImage {
     pub fn set(&mut self,x:usize,y:usize,color:&TgaColor){
         if !self.data.is_empty() && x<self.width && y <self.height{
             let position = (y*self.width+x)*self.pixel_size;
-            self.data[position..position+self.pixel_size].copy_from_slice(&color.rgba[0..self.pixel_size]);
+            self.data[position..(position+self.pixel_size)].copy_from_slice(&color.rgba[0..self.pixel_size]);
         }
     }
     pub fn get(&self,x:usize,y:usize)->Result<TgaColor,& 'static str>{
@@ -60,6 +63,9 @@ impl TgaImage {
             Err("Index invalid!")
         }
     }
+    /// Image flip vertical
+    /// Y inside the picture goes from top to bottom
+    /// This function change Y from bottom to top
     fn flip_vertically(&mut self){
         let half = self.height>>1;
         for x in 0..self.width{
@@ -70,6 +76,7 @@ impl TgaImage {
             }
         }
     }
+    /// unused,now is just write
     pub fn read_tga_file(&mut self,filename:&str){
         use std::fs::File;
         use std::io::Read;
@@ -90,37 +97,29 @@ impl TgaImage {
             self.flip_vertically();
         }
     }
+    /// Writes bytes to a file in the specified format
     pub fn write_tga_file(&mut self,filename:&'static str,flip:bool,rle:bool){
         use std::fs::File;
         use std::io::Write;
+        
+        let developer_area_ref:[uint8_t;4] = [0;4];
+        let extension_area_ref:[uint8_t;4] = [0;4];
+        let footer:[uint8_t;18] = [b'T',b'R',b'U',b'E',b'V',b'I',b'S',b'I',b'O',b'N',b'-',b'X',b'F',b'I',b'L',b'E',b'.',b'\0'];
         let img = File::create(filename);
         let mut img = img.expect("Create file failed!");
         let mut header = TGAHeader{bitsperpixel:(self.pixel_size as u8) << 3,height:self.height as uint16_t,width:self.width as uint16_t,..Default::default()};
         
-        header.datatypecode = if let Self::GRAYSCALE = self.pixel_size{
-            if rle {
-                11
-            }else {
-                3
-            }
-        }else if rle{
-            10
-        }else {
-            2
-        };
-        header.imagedescriptor = if flip{
-            0x00
-        }else{
-            0x20
-        };
-        let developer_area_ref:[uint8_t;4] = [0;4];
-        let extension_area_ref:[uint8_t;4] = [0;4];
-        let footer:[uint8_t;18] = [84,82,85,69,86,73,83,73,79,78,45,88,70,73,76,69,46,0];
-        let _ = img.write_all(unsafe{ serialize_raw(&header)});
-        let _ = img.write_all(&self.data);
-        let _ = img.write_all(&developer_area_ref);
-        let _ = img.write_all(&extension_area_ref);
-        let _ = img.write_all(&footer);
+        header.datatypecode = if Self::GRAYSCALE == self.pixel_size{
+            if rle {11}else {3}
+        }else if rle{10}
+        else {2};
+        header.imagedescriptor = if flip{0x00}else{0x20};
+        
+        assert!(img.write_all(unsafe{serialize_raw(&header)}).is_ok());
+        assert!(img.write_all(&self.data).is_ok());
+        assert!(img.write_all(&developer_area_ref).is_ok());
+        assert!(img.write_all(&extension_area_ref).is_ok());
+        assert!(img.write_all(&footer).is_ok());
     }
     pub fn draw_line(&mut self,mut point1:(usize,usize),mut point2:(usize,usize),color:&TgaColor){
         if point1.0 >= self.width || point1.1 >= self.height || point2.0 >= self.width || point2.1 >= self.height{
@@ -166,12 +165,15 @@ impl TgaImage {
         self.height
     }
 }
+/// Converts structs to byte arrays
 unsafe fn serialize_raw<T:Sized>(src:&T) -> &[u8]{
     std::slice::from_raw_parts((src as *const T) as *const u8,std::mem::size_of::<T>())
 }
+/// Converts structs to mutable byte arrays
 unsafe fn serialize_raw_mut<T:Sized>(src:&mut T)->&mut [u8]{
     std::slice::from_raw_parts_mut((src as * mut T) as * mut u8, std::mem::size_of::<T>())
 }
+#[allow(dead_code)]
 fn create_a_file()->bool{
     use std::fs::File;
     let img = File::create("./target.tga");
