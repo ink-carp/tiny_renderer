@@ -1,5 +1,8 @@
 use tiny_renderer::tga_image::*;
+#[cfg(target_os="linux")]
 const SAVE_PATH:&str = "./output.tga";
+#[cfg(target_os = "windows")]
+const SAVE_PATH:&str = ".\\output.tga";
 fn main(){
     let mut img = TgaImage::new(200,200,TgaImage::RGB);
     let color = TgaColor::new(255,255,255,0);
