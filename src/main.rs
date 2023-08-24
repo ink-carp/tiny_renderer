@@ -4,7 +4,6 @@ use tiny_renderer::tga_image::*;
 use tiny_renderer::model::*;
 fn main(){
     let mut img = TgaImage::new(2000,2000,TgaImage::RGB);
-    let color = TgaColor::new(255,255,255,0);
     let m = Model::new("african_head.obj");
     let light = Array::from(vec![0.,0.,-1.]);
     let mut screen_coords :[(i32,i32);3] = [(0,0);3];

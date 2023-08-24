@@ -1,4 +1,4 @@
-use crate::{geometry::Array, tga_image::TgaImage};
+use crate::geometry::Array;
 #[derive(Default)]
 pub struct Model{
     verts:Vec<Array>, // 顶点数组，Array<3>
@@ -7,17 +7,14 @@ pub struct Model{
     facet_vrt:Vec<i32>,
     facet_tex:Vec<i32>, // 上述数组中的每三角形索引
     facet_nrm:Vec<i32>,
-    diffusemap:TgaImage, // 漫反射颜色纹理
-    normalmap:TgaImage, // 法线贴图纹理
-    specularmap:TgaImage, // 镜面反射贴图纹理
 }
 impl Model {
     pub fn new(filename:&'static str)->Model{
         use std::fs::File;
         use std::io::BufRead;
         use std::io::BufReader;
-        let mut f = File::open(filename).unwrap();
-        let mut br = BufReader::new(f);
+        let f = File::open(filename).unwrap();
+        let br = BufReader::new(f);
 
         //-----------------------------------------------------
         let mut verts = Vec::<Array>::new();
@@ -26,9 +23,6 @@ impl Model {
         let mut facet_vrt = Vec::<i32>::new();
         let mut facet_tex = Vec::<i32>::new();
         let mut facet_nrm = Vec::<i32>::new();
-        let mut diffusemap = TgaImage::default();
-        let mut normalmap = TgaImage::default();
-        let mut specularmap = TgaImage::default();
         //-----------------------------------------------------
 
 
@@ -82,26 +76,8 @@ impl Model {
                 Err(_)=>{break;}
             }
         };
-        println!("# v# {} f# {} vt# {} #vn# {}",verts.len(),facet_vrt.len()/3,tex_coord.len(),norms.len());
-        // Self::load_texture(filename, "_diffuse.tga",&mut diffusemap);
-        // Self::load_texture(filename, "_nm_tangent.tga", &mut normalmap);
-        // Self::load_texture(filename, "_spec.tga", &mut specularmap);
-        Model { verts, tex_coord, norms, facet_vrt, facet_tex, facet_nrm, diffusemap, normalmap, specularmap }
-    }
-    fn load_texture(filename:&'static str,suffix:&'static str,img:&mut TgaImage){
-        let dot = filename.rfind('.').expect("No this character!");
-        let texfile = format!("{}{}",&filename[0..dot],suffix);
-        img.read_tga_file(&texfile);
-        println!("texture file {} load ok.",texfile);
-    }
-    /// return Array<3>
-    pub fn normal(&self,uvf:&Array)->Array{
-        let c = self.normalmap.get((uvf.get(0) * (self.normalmap.get_width() as f64)) as usize, (uvf.get(1)*(self.normalmap.get_height() as f64)) as usize).expect("Get color failed!");
-        let mut ret = Array::new(3);
-        for i in 0..3{
-            ret.set(i, c.get(2-i) as f64 * 2. / 255. -1.);
-        }
-        ret
+        println!("v:{}  f:{}  vt:{}  vn:  {}",verts.len(),facet_vrt.len()/3,tex_coord.len(),norms.len());
+        Model { verts, tex_coord, norms, facet_vrt, facet_tex, facet_nrm}
     }
     /// return Array<2>
     pub fn uv(&self,iface:usize,nthvert:usize)->Array{
