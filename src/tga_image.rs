@@ -1,3 +1,4 @@
+#![allow(non_camel_case_types)]
 type uint8_t = u8;
 type uint16_t = u16;
 #[derive(Default)]
@@ -172,6 +173,7 @@ unsafe fn serialize_raw<T:Sized>(src:&T) -> &[u8]{
 unsafe fn serialize_raw_mut<T:Sized>(src:&mut T)->&mut [u8]{
     std::slice::from_raw_parts_mut((src as * mut T) as * mut u8, std::mem::size_of::<T>())
 }
+#[allow(dead_code)]
 fn create_a_file()->bool{
     use std::fs::File;
     let img = File::create("./target.tga");

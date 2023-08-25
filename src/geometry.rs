@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 #[derive(Clone)]
 pub struct Array(Vec<f64>);
 // trait implement only can change the rhs
@@ -159,7 +160,7 @@ impl Matrix {
         }
         ret
     }
-    fn cofactor(&self,row:usize,col:usize)->f64{
+    fn cofactor(&self,_row:usize,_col:usize)->f64{
         todo!()
     }
 

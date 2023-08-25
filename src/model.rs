@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use crate::{geometry::Array, tga_image::TgaImage};
 #[derive(Default)]
 pub struct Model{
@@ -16,8 +17,8 @@ impl Model {
         use std::fs::File;
         use std::io::BufRead;
         use std::io::BufReader;
-        let mut f = File::open(filename).unwrap();
-        let mut br = BufReader::new(f);
+        let f = File::open(filename).unwrap();
+        let br = BufReader::new(f);
 
         //-----------------------------------------------------
         let mut verts = Vec::<Array>::new();
@@ -26,9 +27,9 @@ impl Model {
         let mut facet_vrt = Vec::<i32>::new();
         let mut facet_tex = Vec::<i32>::new();
         let mut facet_nrm = Vec::<i32>::new();
-        let mut diffusemap = TgaImage::default();
-        let mut normalmap = TgaImage::default();
-        let mut specularmap = TgaImage::default();
+        let diffusemap = TgaImage::default();
+        let normalmap = TgaImage::default();
+        let specularmap = TgaImage::default();
         //-----------------------------------------------------
 
 
