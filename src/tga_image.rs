@@ -1,3 +1,6 @@
+#![allow(non_camel_case_types)]
+use std::{fs::File,io::Read};
+
 type uint8_t = u8;
 type uint16_t = u16;
 #[derive(Default)]
@@ -28,6 +31,10 @@ impl TgaColor {
     pub fn get(&self,index:usize)->u8{
         self.rgba[index]
     }
+    pub fn set(&mut self,index:usize,num:u8){
+        assert!(index < 4,"Index out of range!");
+        self.rgba[index] = num;
+    }
 }
 #[derive(Default)]
 pub struct TgaImage{
@@ -37,6 +44,7 @@ pub struct TgaImage{
     height:usize
 }
 impl TgaImage {
+    
     pub const GRAYSCALE:usize = 1;
     pub const RGB:usize = 3;
     pub const RGBA:usize = 4;
@@ -50,16 +58,14 @@ impl TgaImage {
             self.data[position..position+self.pixel_size].copy_from_slice(&color.rgba[0..self.pixel_size]);
         }
     }
-    pub fn get(&self,x:usize,y:usize)->Result<TgaColor,& 'static str>{
-        if !self.data.is_empty() && x<self.width && y<self.height{
-            let mut ret = TgaColor{rgba:[0;4],size:self.pixel_size};
-            let position = (y*self.width+x)*self.pixel_size;
-            ret.rgba[..ret.size].copy_from_slice(&self.data[position..(position+ret.size)]);
-            Ok(ret)
-        }else {
-            Err("Index invalid!")
-        }
+    pub fn get(&self,x:usize,y:usize)->TgaColor{
+        assert!(x < self.width && y < self.height && !self.data.is_empty());
+        let mut ret = TgaColor{rgba:[255;4],size:self.pixel_size};
+        let position = (y*self.width+x)*self.pixel_size;
+        ret.rgba[..ret.size].copy_from_slice(&self.data[position..(position+ret.size)]);
+        ret
     }
+    #[allow(dead_code)]
     fn flip_vertically(&mut self){
         let half = self.height>>1;
         for x in 0..self.width{
@@ -70,28 +76,72 @@ impl TgaImage {
             }
         }
     }
+    fn load_rle_file(&mut self,mut file:File){
+        println!("PIxel size : {} ,reading...",self.pixel_size);
+        let pixel_sum = self.width*self.height;
+        let mut curent_pixel = 0usize;
+        let mut curent_byte = 0usize;
+        let mut colorbuffer = vec![0u8;self.pixel_size];
+        loop {
+            let mut chunkheader = [0u8;1];
+            if file.read(&mut chunkheader).is_ok(){
+                if chunkheader[0] < 128{
+                    chunkheader[0]+=1;
+                    for _x in 0..chunkheader[0]{
+                        assert!(file.read_exact(&mut colorbuffer).is_ok(),"Read color error,pixel num:{}",curent_pixel);
+                        for element in colorbuffer.iter().take(self.pixel_size){
+                            self.data[curent_byte] = *element;
+                            curent_byte+=1;
+                        }
+                        curent_pixel+=1;
+                        if curent_pixel > pixel_sum{
+                            panic!("Too many pixels read!");
+                        }
+                    }
+                }else {
+                    chunkheader[0]-=127;
+                    assert!(file.read_exact(&mut colorbuffer).is_ok(),"Read color error,pixel num:{}",curent_pixel);
+                    for _ in 0..chunkheader[0]{
+                        for element in colorbuffer.iter().take(self.pixel_size){
+                            self.data[curent_byte] = *element;
+                            curent_byte+=1;
+                        }
+                        curent_pixel+=1;
+                        if curent_pixel > pixel_sum{
+                            panic!("Too many pixels read!");
+                        }
+                    }
+                }
+                if pixel_sum <= curent_pixel{
+                    println!("Read pixel num:{}",curent_pixel);
+                    break;
+                }
+            }else {
+                panic!("A error occured while reading data!");
+            }
+        }
+    }
     pub fn read_tga_file(&mut self,filename:&str){
-        use std::fs::File;
-        use std::io::Read;
         let mut f = File::open(filename).expect("Open file error!");
         let mut th = TGAHeader::default();
         assert_eq!(f.read(unsafe{serialize_raw_mut(&mut th)}).unwrap(),std::mem::size_of::<TGAHeader>());
         self.width = th.width as usize;
         self.height = th.height as usize;
         self.pixel_size = th.bitsperpixel as usize >> 3;
-        if self.pixel_size != Self::GRAYSCALE || self.pixel_size != Self::RGB || self.pixel_size != Self::RGBA{
+        if self.pixel_size != Self::GRAYSCALE && self.pixel_size != Self::RGB && self.pixel_size != Self::RGBA{
             panic!("Wrong format of tga!");
         }
         self.data = vec![0;self.height*self.width*self.pixel_size];
         if th.datatypecode == 3 || th.datatypecode == 2{
-            assert_eq!(f.read(&mut self.data).unwrap(),self.data.len());
+            assert_eq!(f.read(&mut self.data).unwrap() , self.data.len(),"read color message failed!");
+        }else if th.datatypecode == 10 || th.datatypecode == 11{
+            self.load_rle_file(f);
+        }else {
+            panic!("unknown file format  {}",th.datatypecode);
         }
-        if th.imagedescriptor != 0x20{
-            self.flip_vertically();
-        }
+        //self.flip_vertically();
     }
     pub fn write_tga_file(&mut self,filename:&'static str,flip:bool,rle:bool){
-        use std::fs::File;
         use std::io::Write;
         let img = File::create(filename);
         let mut img = img.expect("Create file failed!");
@@ -172,8 +222,8 @@ unsafe fn serialize_raw<T:Sized>(src:&T) -> &[u8]{
 unsafe fn serialize_raw_mut<T:Sized>(src:&mut T)->&mut [u8]{
     std::slice::from_raw_parts_mut((src as * mut T) as * mut u8, std::mem::size_of::<T>())
 }
+#[allow(dead_code)]
 fn create_a_file()->bool{
-    use std::fs::File;
     let img = File::create("./target.tga");
     img.is_ok()
 }

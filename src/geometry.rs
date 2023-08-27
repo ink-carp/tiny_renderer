@@ -1,73 +1,74 @@
-#[derive(Clone)]
-pub struct Array(Vec<f64>);
-// trait implement only can change the rhs
-// can not implement a function let vec * vec = f64
+#![allow(dead_code)]
+use std::ops::*;
+#[derive(Clone,Debug)]
+pub struct Array<T>(Vec<T>);
 
 /// Vector mul 
-impl std::ops::Mul for &Array {
-    type Output = f64;
+impl<T> std::ops::Mul for &Array<T> where T:Mul<Output = T>+AddAssign+Default+Copy{
+    type Output = T;
     fn mul(self, rhs: Self) -> Self::Output {
-        let mut ret = 0f64;
+        let mut ret = T::default();
         for index in 0..self.0.len(){
             ret += self.0[index]*rhs.0[index];
         }
         ret
     }
 }
-impl std::ops::Mul<f64> for &Array {
-    type Output = Array;
-    fn mul(self, rhs:f64) -> Self::Output {
-        let mut ret = Array::with_capacity(self.0.len());
+impl<T> std::ops::Add for &Array<T> where T:Add<Output = T>+Clone+AddAssign+Default+Mul<Output = T>+Div<Output = T>+Sub<Output = T>+Copy{
+    type Output = Array<T>;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        let mut ret = Array::<T>::with_capacity(self.0.len());
         for index in 0..self.0.len(){
-            ret.0.push(self.0[index]*rhs);
+            ret.0.push(self.0[index]+rhs.0[index]);
         }
         ret
     }
 }
-impl std::ops::Add<f64> for &Array {
-    type Output = Array;
-    fn add(self, rhs: f64) -> Self::Output {
-        let mut ret = Array::with_capacity(self.0.len());
+impl<T> std::ops::Add<T> for &Array<T> where T:Add<Output = T> + Clone+Default+Mul<Output = T>+AddAssign+Div<Output = T>+Sub<Output = T>+Copy{
+    type Output = Array<T>;
+    fn add(self, rhs: T) -> Self::Output {
+        let mut ret = Array::<T>::with_capacity(self.0.len());
         for index in 0..self.0.len(){
             ret.0.push(self.0[index]+rhs);
         }
         ret
     }
 }
-impl std::ops::Sub for &Array {
-    type Output = Array;
+impl<T> std::ops::Sub for &Array<T> where T:Sub<Output = T>+Clone+Default+Mul<Output = T>+AddAssign+Div<Output = T>+Copy{
+    type Output = Array<T>;
 
     fn sub(self, rhs: Self) -> Self::Output {
-        let mut ret = Array::with_capacity(self.0.len());
+        let mut ret = Array::<T>::with_capacity(self.0.len());
         for index in 0..self.0.len(){
             ret.0.push(self.0[index]-rhs.0[index]);
         }
         ret
     }
 }
-impl std::ops::Div<f64> for &Array {
-    type Output = Array;
-    fn div(self, rhs: f64) -> Self::Output {
-        let mut ret = Array::with_capacity(self.0.len());
+impl<T> std::ops::Div<T> for &Array<T> where T:Div<Output = T>+Clone+Mul<Output = T>+Default+AddAssign+Sub<Output = T>+Copy{
+    type Output = Array<T>;
+    fn div(self, rhs:T) -> Self::Output {
+        let mut ret = Array::<T>::with_capacity(self.0.len());
         for index in 0..self.0.len(){
             ret.0.push(self.0[index]/rhs);
         }
         ret
     }
 }
-impl From<Vec<f64>> for Array {
-    fn from(value:Vec<f64>) -> Self {
+impl<T> From<Vec<T>> for Array<T> {
+    fn from(value:Vec<T>) -> Self {
         Self(value)
     }
 }
-impl Array {
+impl<T> Array<T> where T:Default+Clone+Mul<Output = T>+AddAssign+Div<Output = T>+Sub<Output = T>+Copy{
     pub fn new(len:usize)->Self{
-        Self(vec![0f64;len])
+        Self(vec![T::default();len])
     }
     pub fn with_capacity(size:usize)->Self{
-        Self(Vec::<f64>::with_capacity(size))
+        Self(Vec::<T>::with_capacity(size))
     }
-    pub fn embed(&self,rhs:&Self,fill:f64)->Self{
+    pub fn embed(&self,rhs:&Self,fill:T)->Self{
         let mut ret = Self::with_capacity(self.0.len());
         for i in 0..self.0.len(){
             if i < rhs.0.len(){
@@ -80,19 +81,11 @@ impl Array {
     }
     /// The user should ensure that the length of the input is less than self length
     pub fn proj(&self,rhs:&Self)->Self{
-        let mut ret = Array::with_capacity(self.0.len());
+        let mut ret = Self::with_capacity(self.0.len());
         for i in 0..self.0.len(){
             ret.0[i] = rhs.0[i];
         }
         ret
-    }
-    pub fn norm(&self)->f64{
-        assert!(self.0.len() == 2 || self.0.len() == 3,"Array length not match!");
-        (self * self).sqrt()
-    }
-    pub fn normalize(&self)->Self{
-        assert!(self.0.len() == 2 || self.0.len() == 3,"Array length not match!");
-        self/self.norm()
     }
     pub fn cross(&self,rhs:&Self)->Self{
         assert!(self.0.len() == 3,"Type not match!");
@@ -101,33 +94,59 @@ impl Array {
     // expose to other crate to handle data
 
     /// Users should ensure that indexes are not out of range
-    pub fn set(&mut self,x:usize,num:f64){
+    pub fn set(&mut self,x:usize,num:T){
         self.0[x] = num;
     }
     /// Users should ensure that indexes are not out of range
-    pub fn get(&self,x:usize)->f64{
+    pub fn get(&self,x:usize)->T{
         self.0[x]
     }
 }
-
-pub struct Matrix{
-    cols:usize,
-    rows:Vec<Array>,
+impl Array<f32> {
+    pub fn norm(&self)->f32{
+        assert!(self.0.len() == 2 || self.0.len() == 3,"Array length not match!");
+        (self * self).sqrt()
+    }
+    pub fn normalize(&self)->Self{
+        assert!(self.0.len() == 2 || self.0.len() == 3,"Array length not match!");
+        self/(self.norm())
+    }
 }
-impl Matrix {
+
+pub struct Matrix<T> where T:Default+Clone+Mul<Output = T>+AddAssign+Div<Output = T>+Sub<Output = T>+Copy{
+    cols:usize,
+    rows:Vec<Array<T>>,
+}
+impl<T> std::ops::Mul for &Matrix<T> where T:Default+Clone+Mul<Output = T>+AddAssign+Div<Output = T>+Sub<Output = T>+Add<Output = T>+Copy{
+    type Output = Matrix<T>;
+
+    fn mul(self, rhs: Self) -> Self::Output {
+        assert!(self.cols == rhs.rows.len(),"Matrix multiply should cols = rows!");
+        let mut ret = Matrix::new(self.rows.len(),rhs.cols);
+        for i in 0..self.rows.len(){
+            for j in 0..rhs.cols{
+                ret.set(i, j, T::default());
+                for k in 0..self.cols{
+                    ret.set(i, j, ret.get(i, j)+self.get(i, k)*rhs.get(k, j));
+                }
+            }
+        }
+        ret
+    }
+}
+impl<T> Matrix<T> where T:Default+Clone+Mul<Output = T>+AddAssign+Div<Output = T>+Sub<Output = T>+Copy{
     pub fn new(nrows:usize,ncols:usize)->Self{
         Self { cols: ncols, rows: vec![Array::new(ncols) ;nrows]}
     }
-    pub fn identity(nrows:usize,ncols:usize)->Self{
+    pub fn identity(nrows:usize,ncols:usize,fill:T)->Self{
         let mut ret = Self::new(nrows, ncols);
-        let max_len = if ncols >= nrows{nrows}else{ncols};
-        for index in 0..max_len{
-            ret.rows[index].set(index, 1.);
+        for index in 0..ncols{
+            ret.rows[index].set(index, fill);
         }
         ret
     }
     /// get one column of matrix
-    pub fn get_col(&self,index:usize)->Array{
+    pub fn get_col(&self,index:usize)->Array<T>{
         assert!(index >= self.cols,"The maximum index length is exceeded!");
         let mut ret = Array::with_capacity(self.rows.len());
         for i in 0..self.rows.len(){
@@ -135,16 +154,16 @@ impl Matrix {
         }
         ret
     } 
-    pub fn set_col(&mut self,index:usize,arr:Array){
+    pub fn set_col(&mut self,index:usize,arr:Array<T>){
         assert!(index >= self.cols,"The maximum index length is exceeded!");
         for i in 0..self.rows.len(){
             self.set(i, index, arr.get(i));
         }
     }
-    pub fn get(&self,y:usize,x:usize)->f64{
+    pub fn get(&self,y:usize,x:usize)->T{
         self.rows[y].get(x)
     }
-    pub fn set(&mut self,y:usize,x:usize,num:f64){
+    pub fn set(&mut self,y:usize,x:usize,num:T){
         self.rows[y].set(x, num);
     }
     /// Removes the specified row and column
@@ -159,10 +178,9 @@ impl Matrix {
         }
         ret
     }
-    fn cofactor(&self,row:usize,col:usize)->f64{
+    fn cofactor(&self,_row:usize,_col:usize)->f64{
         todo!()
     }
-
 }
 
 #[cfg(test)]
