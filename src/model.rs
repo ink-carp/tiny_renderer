@@ -29,7 +29,7 @@ impl Model {
         let mut facet_tex = Vec::<i32>::new();
         let mut facet_nrm = Vec::<i32>::new();
         let mut diffusemap = TgaImage::default();
-        let normalmap = TgaImage::default();
+        let mut normalmap = TgaImage::default();
         let specularmap = TgaImage::default();
         //-----------------------------------------------------
 
@@ -87,7 +87,7 @@ impl Model {
         };
         println!("Read from obj file Ok!\nv:{}  f:{}  vt:{}  vn:{}",verts.len(),facet_vrt.len()/3,tex_coord.len(),norms.len());
         Self::load_texture(filename, "_diffuse.tga",&mut diffusemap);
-        // Self::load_texture(filename, "_nm_tangent.tga", &mut normalmap);
+        Self::load_texture(filename, "_nm_tangent.tga", &mut normalmap);
         // Self::load_texture(filename, "_spec.tga", &mut specularmap);
         Model { verts, tex_coord, norms, facet_vrt, facet_tex, facet_nrm, diffusemap, normalmap, specularmap }
     }

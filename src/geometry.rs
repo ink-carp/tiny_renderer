@@ -111,8 +111,17 @@ impl Array<f32> {
         assert!(self.0.len() == 2 || self.0.len() == 3,"Array length not match!");
         self/(self.norm())
     }
+    /// 向量转为齐次坐标
+    pub fn to_matrix(src:&Array<f32>)->Matrix<f32>{
+        let mut ret = Matrix::new(4,1);
+        ret.set(0, 0, src.get(0));
+        ret.set(1, 0, src.get(1));
+        ret.set(2, 0, src.get(2));
+        ret.set(3, 0, 1.);
+        ret
+    }
 }
-
+#[derive(Debug)]
 pub struct Matrix<T> where T:Default+Clone+Mul<Output = T>+AddAssign+Div<Output = T>+Sub<Output = T>+Copy{
     cols:usize,
     rows:Vec<Array<T>>,
@@ -180,6 +189,9 @@ impl<T> Matrix<T> where T:Default+Clone+Mul<Output = T>+AddAssign+Div<Output = T
     }
     fn cofactor(&self,_row:usize,_col:usize)->f64{
         todo!()
+    }
+    pub fn to_array(src:Self)->Array<T>{
+        Array::from(vec![src.get(0, 0)/src.get(3, 0),src.get(1, 0)/src.get(3, 0),src.get(2, 0)/src.get(3, 0)])
     }
 }
 

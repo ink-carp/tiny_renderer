@@ -24,22 +24,17 @@ fn barycentric(triangle_point:[&Array<FT>;3],p:(usize,usize))->Array<FT>{
 }
 /// 规划出要遍历的区域，减少无用遍历
 /// 判断一个像素点是否位于三角形内，是的话就填充颜色
-pub fn triangle(mut triangles:[Array<i32>;3],mut textures:[[i32;2];3],zbuffer:&mut [f32],img:&mut TgaImage,model:&Model,intensity:f32){
+pub fn triangle(mut triangles:[Array<i32>;3],mut textures:[[i32;2];3],zbuffer:&mut [f32],img:&mut TgaImage,model:&Model,mut intensity:[f32;3]){
     if triangles[0].get(1) == triangles[1].get(1) && triangles[0].get(1) == triangles[2].get(1){return;}
-    if triangles[0].get(1) > triangles[1].get(1) {triangles.swap(0, 1);textures.swap(0, 1)};
-    if triangles[0].get(1) > triangles[2].get(1) {triangles.swap(0, 2);textures.swap(0, 2)};
-    if triangles[1].get(1) > triangles[2].get(1) {triangles.swap(1, 2);textures.swap(1, 2)};
+    if triangles[0].get(1) > triangles[1].get(1) {triangles.swap(0, 1);textures.swap(0, 1);intensity.swap(0, 1)};
+    if triangles[0].get(1) > triangles[2].get(1) {triangles.swap(0, 2);textures.swap(0, 2);intensity.swap(0, 2)};
+    if triangles[1].get(1) > triangles[2].get(1) {triangles.swap(1, 2);textures.swap(1, 2);intensity.swap(1, 2)};
+
 
     let total_height = triangles[2].get(1)-triangles[0].get(1); // height2_0
     let height1_0 = triangles[1].get(1)-triangles[0].get(1);
     let height2_1 = triangles[2].get(1) - triangles[1].get(1);
-    let new_color = |mut src:TgaColor|->TgaColor {
-        for i in 0..3{
-            src.set(i, (src.get(i) as f32 * intensity) as u8);
-        }
-        src
-    };
-    for y in 0..=total_height{
+    for y in 0..total_height{
 
         let second_half = y > height1_0 || height1_0 == 0;
         let segment_height = if second_half { height2_1 } else { height1_0 };
@@ -49,6 +44,8 @@ pub fn triangle(mut triangles:[Array<i32>;3],mut textures:[[i32;2];3],zbuffer:&m
 
         let mut point2_0 = Array::<i32>::new(3);
         let mut point1 = Array::<i32>::new(3);
+        let mut ity_2_0 = intensity[0]+(intensity[2]-intensity[0])*alpha;
+        let mut ity1 = if second_half {intensity[1] + (intensity[2]-intensity[1])*beta} else { intensity[0] + (intensity[1]-intensity[0])*beta};
         let mut uv2_0 = [textures[0][0] + ((textures[2][0]-textures[0][0]) as f32*alpha).round() as i32,
                                     textures[0][1] + ((textures[2][1]-textures[0][1]) as f32*alpha).round() as i32];
         let mut uv1 = if second_half {
@@ -73,16 +70,26 @@ pub fn triangle(mut triangles:[Array<i32>;3],mut textures:[[i32;2];3],zbuffer:&m
             }
         }
 
-        if point2_0.get(0) < point1.get(0){swap(&mut point2_0, &mut point1);swap(&mut uv2_0, &mut uv1)};
+        if point2_0.get(0) < point1.get(0){swap(&mut point2_0, &mut point1);swap(&mut uv2_0, &mut uv1);swap(&mut ity_2_0, &mut ity1)};
         for x in point1.get(0)..=point2_0.get(0){
             let dx = if point2_0.get(0) == point1.get(0) { 1. } else { (x - point1.get(0)) as f32 / (point2_0.get(0) - point1.get(0)) as f32 };
             let mut current_point = Array::<i32>::new(3);
             let real_uv = [uv1[0] + ((uv2_0[0]-uv1[0]) as f32 * dx).round() as i32,uv1[1] + ((uv2_0[1]-uv1[1]) as f32 * dx).round() as i32];
+            let real_intensity = ity1 + (ity_2_0-ity1)*dx;
             let temp = &point2_0-&point1;
             for x in 0..3{
                 current_point.set(x, point1.get(x) + (temp.get(x) as f32 * dx).round() as i32);
             }
             let index = current_point.get(0) as usize + current_point.get(1) as usize*img.get_width();
+            let new_color = |mut src:TgaColor|->TgaColor {
+                for i in 0..3{
+                    src.set(i, (src.get(i) as f32 * real_intensity).round() as u8);
+                }
+                src
+            };
+            if current_point.get(0) >= img.get_width() as i32 || current_point.get(1) >= img.get_height() as i32 || current_point.get(0) < 0 || current_point.get(1) < 0{
+                continue;
+            }
             if zbuffer[index] < current_point.get(2) as f32{
                 zbuffer[index] = current_point.get(2) as f32;
                 let color = new_color(model.get_diffuse(real_uv[0] as usize, real_uv[1] as usize));
